@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Rundom Triangles With WebGL</title>
+		<meta charset="utf-8">
+		<style>
+			body {
+				margin: 0;
+			}
+
+			.main-block {
+				position: absolute;
+				width: 100%;
+				height: 100%;
+			}
+
+			.canvas-outer {
+				position: inherit;
+				width: 100%;
+				top: 0;
+				bottom: 21px;
+			}
+
+			.settings-panel {
+				position: inherit;
+				text-align: center;
+				width: 100%;
+				bottom: 0;
+			}
+		</style>
+		<script>
+			onload = () => {
+				const count_input = document.querySelector("#count");
+				const update_btn = document.querySelector("#update");
+				const canvas_outer = document.querySelector(".canvas-outer");
+
+				//canvas init
+				let canvas = document.createElement("canvas");
+				canvas.width = canvas_outer.getBoundingClientRect().width;
+				canvas.height = canvas_outer.getBoundingClientRect().height;
+
+				canvas_outer.appendChild(canvas);
+
+				//gl init
+				const gl = canvas.getContext("webgl");
+
+				//shaders code
+				const vertSrc = 
+					`attribute vec2 iVertex;
+					 attribute vec3 iColor;
+					 
+					 varying vec3 oColor;
+
+					 void main() {
+						 gl_Position = vec4(iVertex, 0.0, 1.0);
+						 oColor = iColor;
+					 }`;
+				const fragSrc = 
+					`
+					 precision mediump float;
+
+					 varying vec3 oColor;
+
+					 void main() {
+						 gl_FragColor = vec4(oColor, 1.0);
+					 }`;
+
+				//shaders init
+				const vert = gl.createShader(gl.VERTEX_SHADER);
+				const frag = gl.createShader(gl.FRAGMENT_SHADER);
+
+				gl.shaderSource(vert, vertSrc);
+				gl.shaderSource(frag, fragSrc);
+
+				gl.compileShader(vert);
+				
+				let info = gl.getShaderInfoLog(vert);
+				if (info.length > 0)
+					 throw info;
+
+				gl.compileShader(frag);
+			
+				info = gl.getShaderInfoLog(frag);
+				if (info.length > 0)
+					 throw info;
+
+				const program = gl.createProgram();
+
+				gl.attachShader(program, vert);
+				gl.attachShader(program, frag);
+
+				gl.linkProgram(program);
+
+				info = gl.getProgramInfoLog(program);
+				if (info.length > 0)
+					 throw info;
+
+				gl.useProgram(program);
+
+				//shader data
+				const iVertex = gl.getAttribLocation(program, "iVertex");
+				const iColor = gl.getAttribLocation(program, "iColor");
+				const glVertexBuffer = gl.createBuffer();
+				const glColorBuffer = gl.createBuffer();
+
+				//update the screen
+				const update = count => {
+					//config vertex buffer
+					const vertexBuffer = new Float32Array(getRandArray(count * 6, -1, 1));
+
+					gl.bindBuffer(gl.ARRAY_BUFFER, glVertexBuffer);
+					gl.bufferData(
+						gl.ARRAY_BUFFER,
+						vertexBuffer.buffer,
+						gl.STATIC_DRAW
+					);
+					
+					gl.vertexAttribPointer(iVertex, 2, gl.FLOAT, false, 0, 0);
+					gl.enableVertexAttribArray(iVertex);
+
+					//config color buffer
+					const colorBuffer = new Float32Array(getRandArray(count * 9, 0, 1));
+
+					gl.bindBuffer(gl.ARRAY_BUFFER, glColorBuffer);
+					gl.bufferData(
+						gl.ARRAY_BUFFER,
+						colorBuffer.buffer,
+						gl.STATIC_DRAW
+					);
+
+					gl.vertexAttribPointer(iColor, 3, gl.FLOAT, false, 0, 0);
+					gl.enableVertexAttribArray(iColor);
+
+					//render
+					gl.clearColor(1, 1, 1, 1);
+					gl.clear(gl.COLOR_BUFFER_BIT);
+					gl.drawArrays(gl.TRIANGLES, 0, count * 3);
+
+					//clear data
+					gl.bindBuffer(gl.ARRAY_BUFFER, null);
+					gl.disableVertexAttribArray(iVertex);
+					gl.disableVertexAttribArray(iColor);
+				}
+
+				const getRandArray = (count, min, max) => {
+					const array = [];
+					while (count--)
+						array.push(Math.random() * (max - min) + min);
+
+					return array;
+				}
+
+				update_btn.onclick = () => {
+					update(count_input.value);
+				};
+			};
+		</script>
+	</head>
+	<body>
+		<div class="main-block">
+			<div class="canvas-outer"></div>
+			<div class="settings-panel">
+				<input type="number" id="count" placeholder="Triangle Count">
+				<button id="update">Update Triangles</button>
+			</div>
+		</div>
+	</body>
+</html>
